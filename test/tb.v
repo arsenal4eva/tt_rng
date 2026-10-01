@@ -1,42 +1,63 @@
-`default_nettype none
-`timescale 1ns / 1ps
+`timescale 1ns/1ps
 
-module tb ();
+module tb;
 
-  initial begin
-    $dumpfile("tb.fst");
-    $dumpvars(0, tb);
-    #1;
-  end
+    reg [7:0] ui_in;
 
-  reg clk;
-  reg rst_n;
-  reg ena;
-  reg [7:0] ui_in;
-  reg [7:0] uio_in;
-  wire [7:0] uo_out;
-  wire [7:0] uio_out;
-  wire [7:0] uio_oe;
-`ifdef GL_TEST
-  wire VPWR = 1'b1;
-  wire VGND = 1'b0;
-`endif
+    wire [7:0] uo_out;
 
-  tt_um_trng_arsenal4eva user_project (
+    reg [7:0] uio_in;
 
-`ifdef GL_TEST
-      .VPWR(VPWR),
-      .VGND(VGND),
-`endif
+    wire [7:0] uio_out;
+    wire [7:0] uio_oe;
 
-      .ui_in  (ui_in),    // Dedicated inputs
-      .uo_out (uo_out),   // Dedicated outputs
-      .uio_in (uio_in),   // IOs: Input path
-      .uio_out(uio_out),  // IOs: Output path
-      .uio_oe (uio_oe),   // IOs: Enable path (active high: 0=input, 1=output)
-      .ena    (ena),      // enable - goes high when design is selected
-      .clk    (clk),      // clock
-      .rst_n  (rst_n)     // not reset
-  );
+    reg ena;
+    reg clk;
+    reg rst_n;
+
+
+    tt_um_trng_arsenal4eva dut (
+        .ui_in(ui_in),
+        .uo_out(uo_out),
+
+        .uio_in(uio_in),
+        .uio_out(uio_out),
+        .uio_oe(uio_oe),
+
+        .ena(ena),
+        .clk(clk),
+        .rst_n(rst_n)
+    );
+
+
+    initial begin
+
+        clk = 1'b0;
+
+        forever #10 clk = ~clk;
+
+    end
+
+
+    initial begin
+
+        $dumpfile("tb.fst");
+        $dumpvars(0, tb);
+
+        ui_in = 8'b0;
+        uio_in = 8'b0;
+
+        ena = 1'b1;
+        rst_n = 1'b0;
+
+        #100;
+
+        rst_n = 1'b1;
+
+        #1000000;
+
+        $finish;
+
+    end
 
 endmodule

@@ -1,30 +1,21 @@
-# Tiny Tapeout project information
 project:
-  title:        "Minute TRNG"      # Project title
-  author:       "arsenal4eva"      # Your name
-  discord:      "arsenal4eva"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  "Generates random number every minute using oscillators."      # One line description of what your project does
-  language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     50000000       # Clock frequency in Hz (or 0 if not applicable)
+  title:        "Minute TRNG"
+  author:       "arsenal4eva"
+  discord:      "arsenal4eva"
+  description:  "Physical SKY130 ring-oscillator true random number generator."
+  language:     "Verilog"
+  clock_hz:     50000000
 
-  # How many tiles your design occupies? A single tile is about 340x160 uM.
-  tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 3x4 or 4x4
+  tiles: "1x1"
 
-  # Your top module name must start with "tt_um_". Make it unique by including your github username:
-  top_module:  "tt_um_trng_arsenal4eva"
+  top_module: "tt_um_trng_arsenal4eva"
 
-  # List your project's source files here.
-  # Source files must be in ./src and you must list each source file separately, one per line.
-  # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
     - "project.v"
 
-# The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
-# This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
-  # Inputs
   ui[0]: "TRNG enable"
-  ui[1]: "Test"
+  ui[1]: "Test mode"
   ui[2]: "Unused"
   ui[3]: "Unused"
   ui[4]: "Unused"
@@ -32,7 +23,6 @@ pinout:
   ui[6]: "Unused"
   ui[7]: "Unused"
 
-  # Outputs
   uo[0]: "Random bit 0"
   uo[1]: "Random bit 1"
   uo[2]: "Random bit 2"
@@ -42,7 +32,6 @@ pinout:
   uo[6]: "Random bit 6"
   uo[7]: "Random bit 7"
 
-  # Bidirectional pins
   uio[0]: "Unused"
   uio[1]: "Unused"
   uio[2]: "Unused"
@@ -52,5 +41,4 @@ pinout:
   uio[6]: "Unused"
   uio[7]: "Unused"
 
-# Do not change!
 yaml_version: 6

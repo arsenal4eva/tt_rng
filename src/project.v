@@ -1,74 +1,69 @@
 `default_nettype none
 
-module trng_inverter (
-    input  wire a,
-    output wire y
-);
-
-`ifdef VERILATOR
-
-    assign y = ~a;
-
-`elsif __ICARUS__
-
-    assign y = ~a;
-
-`else
-
-    (* keep_hierarchy *)
-    sky130_fd_sc_hd__inv_2 inverter (
-        .A(a),
-        .Y(y)
-    );
-
-`endif
-
-endmodule
-
-
-
 module trng_ring_osc #(
     parameter integer DEPTH = 251
 ) (
     output wire osc_out
 );
 
-    wire [DEPTH-1:0] inv_in;
-    wire [DEPTH-1:0] inv_out;
+`ifdef VERILATOR
 
-    assign inv_in[0] = inv_out[DEPTH-1];
+    assign osc_out = 1'b0;
+
+`elsif __ICARUS__
+
+    assign osc_out = 1'b0;
+
+`else
+
+    (* keep *)
+    wire [DEPTH-1:0] inv_out;
 
     genvar i;
 
     generate
-        for (i = 1; i < DEPTH; i = i + 1) begin : inverter_chain
-            assign inv_in[i] = inv_out[i-1];
+        for (i = 0; i < DEPTH; i = i + 1) begin : inverter_chain
+
+            if (i == 0) begin : first_inverter
+
+                (* keep *)
+                sky130_fd_sc_hd__inv_2 inverter (
+                    .A(inv_out[DEPTH-1]),
+                    .Y(inv_out[0])
+                );
+
+            end
+            else begin : following_inverter
+
+                (* keep *)
+                sky130_fd_sc_hd__inv_2 inverter (
+                    .A(inv_out[i-1]),
+                    .Y(inv_out[i])
+                );
+
+            end
+
         end
     endgenerate
 
-    (* keep_hierarchy *)
-    trng_inverter inv_array [DEPTH-1:0] (
-        .a(inv_in),
-        .y(inv_out)
-    );
+    assign osc_out = inv_out[DEPTH-1];
 
-    assign osc_out = inv_in[0];
+`endif
 
 endmodule
 
 
-
 module tt_um_trng_arsenal4eva (
-    input  wire [7:0] ui_in,
+    input wire [7:0] ui_in,
     output wire [7:0] uo_out,
 
-    input  wire [7:0] uio_in,
+    input wire [7:0] uio_in,
     output wire [7:0] uio_out,
     output wire [7:0] uio_oe,
 
-    input  wire ena,
-    input  wire clk,
-    input  wire rst_n
+    input wire ena,
+    input wire clk,
+    input wire rst_n
 );
 
     wire trng_enable;
@@ -80,16 +75,19 @@ module tt_um_trng_arsenal4eva (
 
     wire entropy_async;
 
+
 `ifdef VERILATOR
 
     reg [31:0] sim_entropy;
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
+        if (!rst_n) begin
             sim_entropy <= 32'hA5C3_7F19;
-        else if (!trng_enable)
+        end
+        else if (!trng_enable) begin
             sim_entropy <= 32'hA5C3_7F19;
-        else
+        end
+        else begin
             sim_entropy <= {
                 sim_entropy[30:0],
                 sim_entropy[31] ^
@@ -97,20 +95,24 @@ module tt_um_trng_arsenal4eva (
                 sim_entropy[1] ^
                 sim_entropy[0]
             };
+        end
     end
 
     assign entropy_async = sim_entropy[0];
+
 
 `elsif __ICARUS__
 
     reg [31:0] sim_entropy;
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
+        if (!rst_n) begin
             sim_entropy <= 32'hA5C3_7F19;
-        else if (!trng_enable)
+        end
+        else if (!trng_enable) begin
             sim_entropy <= 32'hA5C3_7F19;
-        else
+        end
+        else begin
             sim_entropy <= {
                 sim_entropy[30:0],
                 sim_entropy[31] ^
@@ -118,9 +120,11 @@ module tt_um_trng_arsenal4eva (
                 sim_entropy[1] ^
                 sim_entropy[0]
             };
+        end
     end
 
     assign entropy_async = sim_entropy[0];
+
 
 `else
 
@@ -161,6 +165,7 @@ module tt_um_trng_arsenal4eva (
 
 `endif
 
+
     (* async_reg = "true" *)
     reg entropy_meta;
 
@@ -179,9 +184,29 @@ module tt_um_trng_arsenal4eva (
 
     reg [7:0] random_value;
 
+
+`ifdef VERILATOR
+
+    reg [15:0] minute_counter;
+
+    localparam [15:0] MINUTE_COUNT = 16'd999;
+
+
+`elsif __ICARUS__
+
+    reg [15:0] minute_counter;
+
+    localparam [15:0] MINUTE_COUNT = 16'd999;
+
+
+`else
+
     reg [31:0] minute_counter;
 
     localparam [31:0] MINUTE_COUNT = 32'd2_999_999_999;
+
+`endif
+
 
     always @(posedge clk or negedge rst_n) begin
 
@@ -201,7 +226,7 @@ module tt_um_trng_arsenal4eva (
 
             random_value <= 8'b0;
 
-            minute_counter <= 32'b0;
+            minute_counter <= 0;
 
         end
 
@@ -219,7 +244,7 @@ module tt_um_trng_arsenal4eva (
             entropy_byte <= 8'b0;
             entropy_byte_ready <= 1'b0;
 
-            minute_counter <= 32'b0;
+            minute_counter <= 0;
 
         end
 
@@ -257,7 +282,6 @@ module tt_um_trng_arsenal4eva (
                         vn_count <= 4'd0;
 
                     end
-
                     else begin
 
                         vn_byte <= {
@@ -288,7 +312,6 @@ module tt_um_trng_arsenal4eva (
                         vn_count <= 4'd0;
 
                     end
-
                     else begin
 
                         vn_byte <= {
@@ -307,7 +330,7 @@ module tt_um_trng_arsenal4eva (
 
             if (minute_counter == MINUTE_COUNT) begin
 
-                minute_counter <= 32'b0;
+                minute_counter <= 0;
 
                 if (entropy_byte_ready) begin
 
@@ -317,7 +340,6 @@ module tt_um_trng_arsenal4eva (
                 end
 
             end
-
             else begin
 
                 minute_counter <= minute_counter + 1'b1;
@@ -334,6 +356,7 @@ module tt_um_trng_arsenal4eva (
         ? entropy_byte
         : random_value;
 
+
     assign uio_out = 8'b0;
     assign uio_oe = 8'b0;
 
@@ -346,6 +369,5 @@ module tt_um_trng_arsenal4eva (
     };
 
 endmodule
-
 
 `default_nettype wire
