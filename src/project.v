@@ -1,13 +1,15 @@
 `default_nettype none
 
-
-
 module trng_inverter (
     input  wire a,
     output wire y
 );
 
 `ifdef VERILATOR
+
+    assign y = ~a;
+
+`elsif __ICARUS__
 
     assign y = ~a;
 
@@ -22,6 +24,7 @@ module trng_inverter (
 `endif
 
 endmodule
+
 
 
 module trng_ring_osc #(
@@ -39,9 +42,7 @@ module trng_ring_osc #(
 
     generate
         for (i = 1; i < DEPTH; i = i + 1) begin : inverter_chain
-
             assign inv_in[i] = inv_out[i-1];
-
         end
     endgenerate
 
@@ -54,6 +55,7 @@ module trng_ring_osc #(
     assign osc_out = inv_in[0];
 
 endmodule
+
 
 
 module tt_um_trng_arsenal4eva (
@@ -69,16 +71,58 @@ module tt_um_trng_arsenal4eva (
     input  wire rst_n
 );
 
-
     wire trng_enable;
     wire test_mode;
 
     assign trng_enable = ena & ui_in[0];
-    assign test_mode   = ui_in[1];
+    assign test_mode = ui_in[1];
 
 
+    wire entropy_async;
 
-`ifndef VERILATOR
+`ifdef VERILATOR
+
+    reg [31:0] sim_entropy;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            sim_entropy <= 32'hA5C3_7F19;
+        else if (!trng_enable)
+            sim_entropy <= 32'hA5C3_7F19;
+        else
+            sim_entropy <= {
+                sim_entropy[30:0],
+                sim_entropy[31] ^
+                sim_entropy[21] ^
+                sim_entropy[1] ^
+                sim_entropy[0]
+            };
+    end
+
+    assign entropy_async = sim_entropy[0];
+
+`elsif __ICARUS__
+
+    reg [31:0] sim_entropy;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            sim_entropy <= 32'hA5C3_7F19;
+        else if (!trng_enable)
+            sim_entropy <= 32'hA5C3_7F19;
+        else
+            sim_entropy <= {
+                sim_entropy[30:0],
+                sim_entropy[31] ^
+                sim_entropy[21] ^
+                sim_entropy[1] ^
+                sim_entropy[0]
+            };
+    end
+
+    assign entropy_async = sim_entropy[0];
+
+`else
 
     wire ro_125;
     wire ro_251;
@@ -109,52 +153,13 @@ module tt_um_trng_arsenal4eva (
         .osc_out(ro_1001)
     );
 
-
-    wire entropy_async;
-
     assign entropy_async =
         ro_125 ^
         ro_251 ^
         ro_503 ^
         ro_1001;
 
-`else
-
-
-    reg [31:0] sim_entropy;
-
-    wire entropy_async;
-
-    always @(posedge clk or negedge rst_n) begin
-
-        if (!rst_n) begin
-
-            sim_entropy <= 32'hA5C3_7F19;
-
-        end
-        else if (!trng_enable) begin
-
-            sim_entropy <= 32'hA5C3_7F19;
-
-        end
-        else begin
-
-            sim_entropy <= {
-                sim_entropy[30:0],
-                sim_entropy[31] ^
-                sim_entropy[21] ^
-                sim_entropy[1] ^
-                sim_entropy[0]
-            };
-
-        end
-
-    end
-
-    assign entropy_async = sim_entropy[0];
-
 `endif
-
 
     (* async_reg = "true" *)
     reg entropy_meta;
@@ -163,79 +168,70 @@ module tt_um_trng_arsenal4eva (
     reg entropy_sync;
 
 
-
     reg vn_first_bit;
     reg vn_have_first;
 
-    reg [7:0] vn_byte;
+    reg [6:0] vn_byte;
     reg [3:0] vn_count;
 
-
+    reg [7:0] entropy_byte;
     reg entropy_byte_ready;
 
-
-    reg [7:0] entropy_byte;
-
-
-
     reg [7:0] random_value;
-
 
     reg [31:0] minute_counter;
 
     localparam [31:0] MINUTE_COUNT = 32'd2_999_999_999;
 
-
-
     always @(posedge clk or negedge rst_n) begin
 
         if (!rst_n) begin
 
-            entropy_meta      <= 1'b0;
-            entropy_sync      <= 1'b0;
+            entropy_meta <= 1'b0;
+            entropy_sync <= 1'b0;
 
-            vn_first_bit      <= 1'b0;
-            vn_have_first     <= 1'b0;
+            vn_first_bit <= 1'b0;
+            vn_have_first <= 1'b0;
 
-            vn_byte           <= 8'b0;
-            vn_count          <= 4'b0;
+            vn_byte <= 7'b0;
+            vn_count <= 4'b0;
 
+            entropy_byte <= 8'b0;
             entropy_byte_ready <= 1'b0;
-            entropy_byte       <= 8'b0;
 
-            random_value      <= 8'b0;
+            random_value <= 8'b0;
 
-            minute_counter    <= 32'b0;
+            minute_counter <= 32'b0;
 
         end
 
         else if (!trng_enable) begin
 
-            entropy_meta      <= 1'b0;
-            entropy_sync      <= 1'b0;
+            entropy_meta <= 1'b0;
+            entropy_sync <= 1'b0;
 
-            vn_first_bit      <= 1'b0;
-            vn_have_first     <= 1'b0;
+            vn_first_bit <= 1'b0;
+            vn_have_first <= 1'b0;
 
-            vn_byte           <= 8'b0;
-            vn_count          <= 4'b0;
+            vn_byte <= 7'b0;
+            vn_count <= 4'b0;
 
+            entropy_byte <= 8'b0;
             entropy_byte_ready <= 1'b0;
-            entropy_byte       <= 8'b0;
 
-            minute_counter    <= 32'b0;
+            minute_counter <= 32'b0;
 
         end
 
         else begin
 
-
             entropy_meta <= entropy_async;
             entropy_sync <= entropy_meta;
 
+
             if (!vn_have_first) begin
 
-                vn_first_bit  <= entropy_sync;
+                vn_first_bit <= entropy_sync;
                 vn_have_first <= 1'b1;
 
             end
@@ -251,12 +247,13 @@ module tt_um_trng_arsenal4eva (
                     if (vn_count == 4'd7) begin
 
                         entropy_byte <= {
-                            vn_byte[6:0],
+                            vn_byte,
                             1'b0
                         };
 
                         entropy_byte_ready <= 1'b1;
-                        vn_byte <= 8'b0;
+
+                        vn_byte <= 7'b0;
                         vn_count <= 4'd0;
 
                     end
@@ -264,7 +261,7 @@ module tt_um_trng_arsenal4eva (
                     else begin
 
                         vn_byte <= {
-                            vn_byte[6:0],
+                            vn_byte[5:0],
                             1'b0
                         };
 
@@ -274,18 +271,20 @@ module tt_um_trng_arsenal4eva (
 
                 end
 
+
                 else if ((vn_first_bit == 1'b1) &&
                          (entropy_sync == 1'b0)) begin
 
                     if (vn_count == 4'd7) begin
 
                         entropy_byte <= {
-                            vn_byte[6:0],
+                            vn_byte,
                             1'b1
                         };
 
                         entropy_byte_ready <= 1'b1;
-                        vn_byte <= 8'b0;
+
+                        vn_byte <= 7'b0;
                         vn_count <= 4'd0;
 
                     end
@@ -293,7 +292,7 @@ module tt_um_trng_arsenal4eva (
                     else begin
 
                         vn_byte <= {
-                            vn_byte[6:0],
+                            vn_byte[5:0],
                             1'b1
                         };
 
@@ -306,11 +305,9 @@ module tt_um_trng_arsenal4eva (
             end
 
 
-
             if (minute_counter == MINUTE_COUNT) begin
 
                 minute_counter <= 32'b0;
-
 
                 if (entropy_byte_ready) begin
 
@@ -332,16 +329,13 @@ module tt_um_trng_arsenal4eva (
     end
 
 
-
     assign uo_out =
         test_mode
         ? entropy_byte
         : random_value;
 
-
-
     assign uio_out = 8'b0;
-    assign uio_oe  = 8'b0;
+    assign uio_oe = 8'b0;
 
 
     wire _unused;
