@@ -2,7 +2,6 @@
 
 /* verilator lint_off UNOPTFLAT */
 /* verilator lint_off COMBDLY */
-/* verilator lint_off CIRCULAR */
 
 module trng_ring_osc #(
     parameter integer DEPTH = 53
@@ -42,7 +41,6 @@ module trng_ring_osc #(
 
 endmodule
 
-/* verilator lint_on CIRCULAR */
 /* verilator lint_on COMBDLY */
 /* verilator lint_on UNOPTFLAT */
 
