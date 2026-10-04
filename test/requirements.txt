@@ -1,1 +1,1 @@
-cocotb
+cocotb==2.1.0

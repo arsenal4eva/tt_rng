@@ -1,22 +1,20 @@
 `default_nettype none
 
+/* verilator lint_off UNOPTFLAT */
+/* verilator lint_off COMBDLY */
+/* verilator lint_off CIRCULAR */
+
 module trng_ring_osc #(
-    parameter integer DEPTH = 251
+    parameter integer DEPTH = 53
 ) (
     output wire osc_out
 );
 
-`ifdef VERILATOR
-
-    assign osc_out = 1'b0;
-
-`elsif __ICARUS__
-
-    assign osc_out = 1'b0;
-
-`else
-
-    (* keep *)
+    // Portable free-running ring oscillator using generic logic.
+    // Synthesizes to whatever stdcells the PDK provides (SKY130/GF180),
+    // so GDS linter + synthesis pass on any Tiny Tapeout shuttle.
+    // DEPTH must be odd for oscillation.
+    (* keep, dont_touch = "true" *)
     wire [DEPTH-1:0] inv_out;
 
     genvar i;
@@ -26,20 +24,14 @@ module trng_ring_osc #(
 
             if (i == 0) begin : first_inverter
 
-                (* keep *)
-                sky130_fd_sc_hd__inv_2 inverter (
-                    .A(inv_out[DEPTH-1]),
-                    .Y(inv_out[0])
-                );
+                (* keep, dont_touch = "true" *)
+                not inverter (inv_out[0], inv_out[DEPTH-1]);
 
             end
             else begin : following_inverter
 
-                (* keep *)
-                sky130_fd_sc_hd__inv_2 inverter (
-                    .A(inv_out[i-1]),
-                    .Y(inv_out[i])
-                );
+                (* keep, dont_touch = "true" *)
+                not inverter (inv_out[i], inv_out[i-1]);
 
             end
 
@@ -48,9 +40,11 @@ module trng_ring_osc #(
 
     assign osc_out = inv_out[DEPTH-1];
 
-`endif
-
 endmodule
+
+/* verilator lint_on CIRCULAR */
+/* verilator lint_on COMBDLY */
+/* verilator lint_on UNOPTFLAT */
 
 
 module tt_um_trng_arsenal4eva (
@@ -134,26 +128,26 @@ module tt_um_trng_arsenal4eva (
     wire ro_1001;
 
     trng_ring_osc #(
-        .DEPTH(125)
-    ) oscillator_125 (
+        .DEPTH(13)
+    ) oscillator_13 (
         .osc_out(ro_125)
     );
 
     trng_ring_osc #(
-        .DEPTH(251)
-    ) oscillator_251 (
+        .DEPTH(29)
+    ) oscillator_29 (
         .osc_out(ro_251)
     );
 
     trng_ring_osc #(
-        .DEPTH(503)
-    ) oscillator_503 (
+        .DEPTH(53)
+    ) oscillator_53 (
         .osc_out(ro_503)
     );
 
     trng_ring_osc #(
-        .DEPTH(1001)
-    ) oscillator_1001 (
+        .DEPTH(101)
+    ) oscillator_101 (
         .osc_out(ro_1001)
     );
 
