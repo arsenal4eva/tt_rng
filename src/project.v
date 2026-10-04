@@ -15,6 +15,13 @@ module trng_ring_osc #(
     // fails the TT flow), while the cells map 1:1 to silicon.
     // clkinv_1 pinout (.I/.ZN) confirmed against the GF180 PDK
     // netlist. DEPTH must be odd for oscillation.
+    // NOTE: simulators elaborate this module even when uninstantiated,
+    // and have no PDK models, so keep a sim tie-off inside the module.
+`ifdef VERILATOR
+    assign osc_out = 1'b0;
+`elsif __ICARUS__
+    assign osc_out = 1'b0;
+`else
     (* keep, dont_touch = "true" *)
     wire [DEPTH-1:0] inv_out;
 
@@ -46,6 +53,7 @@ module trng_ring_osc #(
     endgenerate
 
     assign osc_out = inv_out[DEPTH-1];
+`endif
 
 endmodule
 
