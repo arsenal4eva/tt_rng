@@ -9,10 +9,12 @@ module trng_ring_osc #(
     output wire osc_out
 );
 
-    // Portable free-running ring oscillator using generic logic.
-    // Synthesizes to whatever stdcells the PDK provides (SKY130/GF180),
-    // so GDS linter + synthesis pass on any Tiny Tapeout shuttle.
-    // DEPTH must be odd for oscillation.
+    // Free-running ring oscillator built from real GF180MCU stdcells.
+    // Direct instantiation keeps the loop opaque to Yosys' RTL
+    // combinational-loop check (which rejects `not`-gate loops and
+    // fails the TT flow), while the cells map 1:1 to silicon.
+    // clkinv_1 pinout (.I/.ZN) confirmed against the GF180 PDK
+    // netlist. DEPTH must be odd for oscillation.
     (* keep, dont_touch = "true" *)
     wire [DEPTH-1:0] inv_out;
 
@@ -24,13 +26,19 @@ module trng_ring_osc #(
             if (i == 0) begin : first_inverter
 
                 (* keep, dont_touch = "true" *)
-                not inverter (inv_out[0], inv_out[DEPTH-1]);
+                gf180mcu_fd_sc_mcu7t5v0__clkinv_1 inverter (
+                    .I(inv_out[DEPTH-1]),
+                    .ZN(inv_out[0])
+                );
 
             end
             else begin : following_inverter
 
                 (* keep, dont_touch = "true" *)
-                not inverter (inv_out[i], inv_out[i-1]);
+                gf180mcu_fd_sc_mcu7t5v0__clkinv_1 inverter (
+                    .I(inv_out[i-1]),
+                    .ZN(inv_out[i])
+                );
 
             end
 
